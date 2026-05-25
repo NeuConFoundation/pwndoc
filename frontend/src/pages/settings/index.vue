@@ -894,7 +894,7 @@
                         <tbody>
                             <tr v-for="(grp, idx) in entraSettings.groups" :key="idx">
                                 <td><q-input v-model="grp.groupId" dense borderless placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></td>
-                                <td><q-input v-model="grp.label"   dense borderless placeholder="e.g. GMF-Offsec-Admins" /></td>
+                                <td><q-input v-model="grp.label"   dense borderless placeholder="e.g. RedTeam-Admins" /></td>
                                 <td>
                                     <q-select v-model="grp.role" :options="['admin','user']" dense borderless emit-value map-options />
                                 </td>
