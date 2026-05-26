@@ -273,6 +273,30 @@ module.exports = function(app) {
         .catch(err => Response.Internal(res, err));
     });
 
+    // Generate (or regenerate) API key for current user — returned once, never stored in plaintext
+    app.post('/api/users/apikey', acl.hasPermission('validtoken'), async function(req, res) {
+        try {
+            const rawKey = await User.generateApiKey(req.decodedToken.id);
+            Response.Created(res, { key: rawKey, message: 'Save this key — it will not be shown again.' });
+        } catch(err) { Response.Internal(res, err); }
+    });
+
+    // Get current user's API key status (prefix + created date, never the raw key)
+    app.get('/api/users/apikey', acl.hasPermission('validtoken'), async function(req, res) {
+        try {
+            const user = await User.findById(req.decodedToken.id).select('apiKeyPrefix apiKeyCreatedAt');
+            Response.Ok(res, { prefix: user.apiKeyPrefix, createdAt: user.apiKeyCreatedAt });
+        } catch(err) { Response.Internal(res, err); }
+    });
+
+    // Revoke API key for current user
+    app.delete('/api/users/apikey', acl.hasPermission('validtoken'), async function(req, res) {
+        try {
+            await User.revokeApiKey(req.decodedToken.id);
+            Response.Ok(res, 'API key revoked.');
+        } catch(err) { Response.Internal(res, err); }
+    });
+
     // Update any user (admin only)
     app.put("/api/users/:id", acl.hasPermission('users:update'), function(req, res) {
         if (req.body.password && !passwordpolicy.strongPassword(req.body.password)){

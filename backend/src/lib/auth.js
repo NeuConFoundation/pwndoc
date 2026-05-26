@@ -124,18 +124,58 @@ class ACL {
         var Response = require('./httpResponse')
         var jwt = require('jsonwebtoken')
 
-        return (req, res, next) => {
+        return async (req, res, next) => {
+            // API key path: Authorization: ApiKey pk_xxx
+            const authHeader = req.headers['authorization']
+            if (authHeader && authHeader.startsWith('ApiKey ')) {
+                const rawKey = authHeader.slice(7).trim()
+                try {
+                    const User = require('mongoose').model('User')
+                    const user = await User.authenticateByApiKey(rawKey)
+                    if (!user) {
+                        Response.Unauthorized(res, 'Invalid API key')
+                        return
+                    }
+                    if (user.enabled === false) {
+                        Response.Unauthorized(res, 'Account disabled')
+                        return
+                    }
+                    const decoded = {
+                        id:        user._id,
+                        username:  user.username,
+                        role:      user.role,
+                        firstname: user.firstname,
+                        lastname:  user.lastname,
+                        email:     user.email,
+                        phone:     user.phone,
+                        jobTitle:  user.jobTitle,
+                        roles:     this.getRoles(user.role),
+                    }
+                    if (permission === 'validtoken' || this.isAllowed(decoded.role, permission)) {
+                        req.decodedToken = decoded
+                        return next()
+                    } else {
+                        Response.Forbidden(res, 'Insufficient privileges')
+                        return
+                    }
+                } catch (err) {
+                    Response.Internal(res, err)
+                    return
+                }
+            }
+
+            // JWT cookie path (existing behaviour)
             if (!req.cookies['token']) {
                 Response.Unauthorized(res, 'No token provided')
                 return;
             }
-    
+
             var cookie = req.cookies['token'].split(' ')
             if (cookie.length !== 2 || cookie[0] !== 'JWT') {
                 Response.Unauthorized(res, 'Bad token type')
                 return
             }
-    
+
             var token = cookie[1]
             jwt.verify(token, jwtSecret, (err, decoded) => {
                 if (err) {
@@ -145,7 +185,7 @@ class ACL {
                         Response.Unauthorized(res, 'Invalid token')
                     return
                 }
-                
+
                 if ( permission === "validtoken" || this.isAllowed(decoded.role, permission)) {
                     req.decodedToken = decoded
                     return next()

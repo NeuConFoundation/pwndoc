@@ -24,7 +24,10 @@ var UserSchema = new Schema({
     enabled:        {type: Boolean, default: true},
     refreshTokens:  [{_id: false, sessionId: String, userAgent: String, token: String}],
     authType:       {type: String, enum: ['local', 'entra'], default: 'local'},
-    entraId:        {type: String, unique: true, sparse: true}   // Entra OID; sparse allows multiple nulls
+    entraId:        {type: String, unique: true, sparse: true},  // Entra OID; sparse allows multiple nulls
+    apiKeyHash:     {type: String, index: true, sparse: true, select: false},
+    apiKeyPrefix:   {type: String, default: null},
+    apiKeyCreatedAt:{type: Date, default: null},
 }, {timestamps: true});
 
 var totpConfig = {
@@ -528,6 +531,37 @@ UserSchema.statics.findOrCreateFromEntra = function ({ entraId, username, firstn
                 reject(err);
         });
     });
+};
+
+// Generate (or regenerate) an API key for a user. Returns the raw key once — never stored in plaintext.
+UserSchema.statics.generateApiKey = async function(userId) {
+    const crypto = require('crypto');
+    const rawKey = 'pk_' + crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(rawKey).digest('hex');
+    const prefix = rawKey.substring(0, 10) + '...' + rawKey.slice(-4);
+    await this.findByIdAndUpdate(userId, {
+        apiKeyHash: hash,
+        apiKeyPrefix: prefix,
+        apiKeyCreatedAt: new Date(),
+    });
+    return rawKey; // returned once only — never stored in plaintext
+};
+
+// Revoke a user's API key by clearing all key fields.
+UserSchema.statics.revokeApiKey = async function(userId) {
+    await this.findByIdAndUpdate(userId, {
+        apiKeyHash: null,
+        apiKeyPrefix: null,
+        apiKeyCreatedAt: null,
+    });
+};
+
+// Look up a user by raw API key (hashes it first for safe comparison).
+UserSchema.statics.authenticateByApiKey = async function(rawKey) {
+    if (!rawKey || !rawKey.startsWith('pk_')) return null;
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(rawKey).digest('hex');
+    return this.findOne({ apiKeyHash: hash }).select('+apiKeyHash');
 };
 
 /*

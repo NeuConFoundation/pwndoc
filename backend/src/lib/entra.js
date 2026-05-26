@@ -3,7 +3,21 @@ const msal = require('@azure/msal-node');
 const crypto = require('crypto');
 const https = require('https');
 
+// Sync check — used for route registration at startup only
 const isEnabled = () => process.env.ENTRA_ENABLED === 'true';
+
+// Async check — consults DB entraAuth.enabled at runtime (env var is prerequisite)
+const isEnabledLive = async () => {
+    if (process.env.ENTRA_ENABLED !== 'true') return false;
+    try {
+        const Settings = require('mongoose').model('Settings');
+        const s = await Settings.getEntraAuth();
+        // If DB has no entraAuth yet, default to enabled (env var is sufficient)
+        return s && s.entraAuth != null ? s.entraAuth.enabled : true;
+    } catch {
+        return true; // DB failure → fall back to env var being authoritative
+    }
+};
 
 // Lazy singleton — only instantiate when Entra is enabled and a request arrives
 let _cca = null;
@@ -144,4 +158,4 @@ const extractClaims = (tokenResponse) => {
   };
 };
 
-module.exports = { isEnabled, getLoginUrl, handleCallback, mapGroupsToRole, getGroupsFromGraph, extractClaims, testConnection };
+module.exports = { isEnabled, isEnabledLive, getLoginUrl, handleCallback, mapGroupsToRole, getGroupsFromGraph, extractClaims, testConnection };

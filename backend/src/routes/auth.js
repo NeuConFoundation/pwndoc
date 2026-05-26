@@ -8,8 +8,9 @@ var jwt     = require('jsonwebtoken');
 module.exports = function(app) {
 
   // Public: tells the frontend whether to show the "Sign in with Microsoft" button
-  app.get('/api/auth/entra/config', (_req, res) => {
-    res.json({ enabled: entra.isEnabled() });
+  // Uses isEnabledLive() to reflect the DB-level toggle at runtime
+  app.get('/api/auth/entra/config', async (_req, res) => {
+    res.json({ enabled: await entra.isEnabledLive() });
   });
 
   if (!entra.isEnabled()) return;
@@ -17,6 +18,7 @@ module.exports = function(app) {
   // Initiate the Entra OIDC auth code flow
   app.get('/api/auth/entra/login', async (req, res) => {
     try {
+      if (!await entra.isEnabledLive()) return res.redirect('/login?entraError=disabled');
       const url = await entra.getLoginUrl(req);
       res.redirect(url);
     } catch (err) {
@@ -28,6 +30,7 @@ module.exports = function(app) {
   // Entra redirects here after the user authenticates
   app.get('/api/auth/entra/callback', async (req, res) => {
     try {
+      if (!await entra.isEnabledLive()) return res.redirect('/login?entraError=disabled');
       const tokenResponse = await entra.handleCallback(req);
       const claims = entra.extractClaims(tokenResponse);
 
