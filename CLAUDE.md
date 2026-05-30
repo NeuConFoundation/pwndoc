@@ -1,4 +1,23 @@
-# CLAUDE.md
+# PwnDoc Fork — GMF Red Cloud Customization
+
+> **Deployment target:** GMF Red Cloud Zone 4 (`RC-Z4-PWN-01`). See `DEPLOYMENT.md` for the full relationship to Red Cloud infra.
+>
+> **Future ADO home:** This fork becomes a separate repo in the `RedCloud` ADO project (D-7 resolved 2026-05-29). NOT a folder in the main `redteam-infrastructure` repo — kept separate for upstream-merge hygiene and license separation.
+
+## GMF customization scope
+
+Forked + GMF-customized version of [PwnDoc](https://github.com/pwndoc/pwndoc) — open-source pentest report management tool. Customizations include:
+- GMF rebranding (UI labels, color scheme)
+- Custom finding fields aligned to GMF SRD
+- Integration hooks for `offsec-claude-config` finding-submission workflow
+- (Optional, future) SAML SSO to GMF OFFSEC Entra tenant
+
+## Don't put infra code here
+
+This repo is for PwnDoc source customization ONLY. All deployment Bicep / scripts / configs belong in the Red Cloud mono-repo:
+- `C:\claude\projects\redteam-infrastructure\enterprise-red\red-cloud\hosted-services\pwndoc\`
+
+---
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
